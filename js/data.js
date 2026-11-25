@@ -345,6 +345,19 @@ export function applyRange(db, opts) {
   return res;
 }
 
+// Ile dni z zakresu zostanie objętych operacją (podgląd na przycisku).
+export function countRangeDays(o) {
+  if (!isValidDateISO(o.from) || !isValidDateISO(o.to) || o.to < o.from) return 0;
+  let c = 0;
+  for (let iso = o.from; iso <= o.to; iso = addDaysISO(iso, 1)) {
+    const wd = weekdayIndex(iso), hol = !!holidayName(iso);
+    if ((wd === 5 && !o.sat) || (wd === 6 && !o.sun) || (hol && !o.hol)) continue;
+    c++;
+    if (c > 400) break;
+  }
+  return c;
+}
+
 // ---------- Stawki ----------
 export function addRate(db, from, rate) {
   db.settings.rateHistory = [...db.settings.rateHistory.filter(r => r.from !== from), { from, rate: round2(rate) }];

@@ -4,7 +4,7 @@ import * as D from "./data.js";
 import * as V from "./views.js";
 import { openReport } from "./report.js";
 
-const VERSION = "6.0 · test 1";
+const VERSION = "6.0 (test 2)";
 const $ = id => document.getElementById(id);
 const S = {
   db: null, saved: "", meta: {}, today: D.todayISO(), month: "",
@@ -66,11 +66,13 @@ function renderSheet() {
   const sheet = $("sheet");
   if (S.sheet?.type === "day") sheet.innerHTML = V.daySheetHTML(S.db, S.sheet.date, S.edit);
   else if (S.sheet?.type === "menu") sheet.innerHTML = V.menuHTML();
+  else if (S.sheet?.type === "rate") sheet.innerHTML = V.rateSheetHTML(S.db);
+  else if (S.sheet?.type === "tpl") sheet.innerHTML = V.tplSheetHTML();
 }
 function renderPanel() {
   const top = $("panel").scrollTop;
   const html = {
-    range: () => V.rangeHTML(S.db, S.range),
+    range: () => V.rangeHTML(S.db, S.range, D.countRangeDays(S.range)),
     year: () => V.yearHTML(S.db, S.year),
     settings: () => V.settingsHTML(S.db),
     backup: () => V.backupHTML(S.meta, !!shareFile(), !!D.readRaw(D.MAIN_KEY)),
@@ -112,6 +114,30 @@ function setMonth(month, scroll = "top") {
   S.month = month; S.open = null; S.fill = null;
   render();
   if (scroll === "today") scrollToDate(S.today, false); else window.scrollTo({ top: 0 });
+}
+// Płynna zmiana miesiąca: obecny odjeżdża w bok, nowy wjeżdża z drugiej strony.
+// from = aktualne przesunięcie (gdy palec już przeciągnął listę).
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+let sliding = false;
+function slideMonth(dir, month = D.addMonthsYM(S.month, dir), scroll = "top") {
+  const pager = $("pager");
+  if (reduceMotion()) { pager.style.transform = pager.style.opacity = ""; setMonth(month, scroll); return; }
+  if (sliding) return;
+  sliding = true;
+  const w = pager.offsetWidth;
+  pager.classList.add("anim");
+  pager.style.transform = `translateX(${-dir * w * 0.4}px)`;
+  pager.style.opacity = "0";
+  setTimeout(() => {
+    pager.classList.remove("anim");
+    setMonth(month, scroll);
+    pager.style.transform = `translateX(${dir * w * 0.4}px)`;
+    void pager.offsetWidth;
+    pager.classList.add("anim");
+    pager.style.transform = "";
+    pager.style.opacity = "";
+    setTimeout(() => { pager.classList.remove("anim"); sliding = false; }, 220);
+  }, 170);
 }
 
 // ---------- Okna (arkusz, panel, pytanie) + gest „wstecz” ----------
@@ -319,6 +345,19 @@ function openPanel(name) {
   if (S.sheet?.type === "menu") { S.sheet = null; swapOverlay($("sheet"), $("panel"), cb); }
   else openOverlay($("panel"), cb);
 }
+function updateRangeButton() {
+  const r = readRange(), c = D.countRangeDays(r), btn = $("rangeApply");
+  if (!btn) return;
+  const what = V.RANGE_WHAT[r.kind];
+  btn.disabled = !c;
+  btn.textContent = c ? `Zapisz ${what} dla ${c} ${D.pluralPL(c, "dnia", "dni", "dni")}` : "Brak dni w tym zakresie";
+}
+function openSheet(type, closeCb) {
+  S.sheet = { type };
+  renderSheet();
+  $("sheet").scrollTop = 0;
+  openOverlay($("sheet"), () => { S.sheet = null; closeCb?.(); });
+}
 function readRange() {
   const r = S.range, v = id => $(id)?.value;
   if ($("rFrom")) { r.from = v("rFrom"); r.to = v("rTo"); }
@@ -345,9 +384,9 @@ async function applyRange(remove) {
 
 // ---------- Zdarzenia ----------
 const A = {
-  "prev-month": () => setMonth(D.addMonthsYM(S.month, -1)),
-  "next-month": () => setMonth(D.addMonthsYM(S.month, 1)),
-  "go-today": () => setMonth(D.ym(S.today), "today"),
+  "prev-month": () => slideMonth(-1),
+  "next-month": () => slideMonth(1),
+  "go-today": () => slideMonth(S.month < D.ym(S.today) ? 1 : -1, D.ym(S.today), "today"),
   "pick-month": () => { const p = $("monthPicker"); p.value = S.month; try { p.showPicker(); } catch { p.focus(); p.click(); } },
   "menu": () => { S.sheet = { type: "menu" }; renderSheet(); openOverlay($("sheet"), () => { S.sheet = null; }); },
   "day": el => {
@@ -433,6 +472,15 @@ const A = {
       buttons: [{ label: "Anuluj", value: false }, { label: "Zapisz", value: true, kind: "primary" }] });
     if (!ok) return;
     const snap = S.saved; D.addRate(S.db, from, val); commit("Zapisano stawkę.", snap);
+    if ($("rateVal")) $("rateVal").value = "";
+  },
+  "sheet-rate": () => openSheet("rate"),
+  "sheet-tpl-add": () => openSheet("tpl"),
+  "step": el => {
+    const key = el.dataset.key, lim = { leaveQuota: [0, 60], backupReminderDays: [1, 60] }[key];
+    const v = Math.min(lim[1], Math.max(lim[0], (Number(S.db.settings[key]) || 0) + Number(el.dataset.d)));
+    if (v === S.db.settings[key]) return;
+    S.db.settings[key] = v; commit();
   },
   "del-rate": el => { const snap = S.saved; D.removeRate(S.db, +el.dataset.i); commit("Usunięto stawkę.", snap); },
   "add-tpl": () => {
@@ -440,7 +488,9 @@ const A = {
     if (!start || !end || start === end) return toast("Uzupełnij poprawnie wejście i wyjście.");
     if (list.some(t => t.start === start && t.end === end)) return toast("Taki szablon już jest.");
     if (list.length >= 8) return toast("Możesz mieć najwyżej 8 szablonów.");
-    const snap = S.saved; list.push({ start, end }); commit("Dodano szablon.", snap);
+    const snap = S.saved; list.push({ start, end });
+    if (S.sheet?.type === "tpl") closeOverlay($("sheet"));
+    commit("Dodano szablon.", snap);
   },
   "del-tpl": el => { const snap = S.saved; S.db.settings.shiftTemplates.splice(+el.dataset.i, 1); commit("Usunięto szablon.", snap); }
 };
@@ -469,23 +519,45 @@ function bindEvents() {
   document.addEventListener("input", e => {
     if (e.target.id === "tStart") S.edit.start = e.target.value;
     if (e.target.id === "tEnd") S.edit.end = e.target.value;
+    if (S.panel === "range" && /^r(From|To|Start|End|Sat|Sun|Hol)$/.test(e.target.id)) updateRangeButton();
   });
   $("toastUndo").addEventListener("click", () => { const s = toastSnap; $("toast").classList.remove("show"); if (s) undo(s); });
   window.addEventListener("scroll", () => $("top").classList.toggle("scrolled", window.scrollY > 4), { passive: true });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && D.todayISO() !== S.today) { S.today = D.todayISO(); render(); }
   });
-  // Przesunięcie palcem w bok zmienia miesiąc.
-  let sx = 0, sy = 0, track = false;
+  // Przeciągnięcie w bok: lista jedzie za palcem, po puszczeniu wjeżdża sąsiedni miesiąc.
+  const pager = $("pager");
+  let sx = 0, sy = 0, st = 0, mode = "", dx = 0;
   $("main").addEventListener("touchstart", e => {
-    if (e.touches.length !== 1 || e.target.closest("input,textarea,.quick")) { track = false; return; }
-    track = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    mode = "";
+    if (sliding || e.touches.length !== 1 || e.target.closest("input,textarea,.quick")) { mode = "off"; return; }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = e.timeStamp; dx = 0;
   }, { passive: true });
-  $("main").addEventListener("touchend", e => {
-    if (!track) return; track = false;
-    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-    if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.8) setMonth(D.addMonthsYM(S.month, dx < 0 ? 1 : -1));
+  $("main").addEventListener("touchmove", e => {
+    if (mode === "off" || mode === "v") return;
+    const x = e.touches[0].clientX - sx, y = e.touches[0].clientY - sy;
+    if (!mode) {
+      if (Math.abs(x) < 10 && Math.abs(y) < 10) return;
+      mode = Math.abs(x) > Math.abs(y) * 1.2 ? "h" : "v";
+      if (mode === "v") return;
+    }
+    dx = x;
+    const w = pager.offsetWidth;
+    pager.style.transform = `translateX(${dx}px)`;
+    pager.style.opacity = String(1 - Math.min(0.6, Math.abs(dx) / w * 0.8));
   }, { passive: true });
+  const endDrag = e => {
+    if (mode !== "h") { mode = ""; return; }
+    mode = "";
+    const w = pager.offsetWidth, v = Math.abs(dx) / Math.max(1, e.timeStamp - st);
+    if (Math.abs(dx) > w * 0.22 || (Math.abs(dx) > 40 && v > 0.45)) { slideMonth(dx < 0 ? 1 : -1); return; }
+    pager.classList.add("anim");
+    pager.style.transform = ""; pager.style.opacity = "";
+    setTimeout(() => pager.classList.remove("anim"), 220);
+  };
+  $("main").addEventListener("touchend", endDrag, { passive: true });
+  $("main").addEventListener("touchcancel", endDrag, { passive: true });
 }
 
 function registerSW() {
