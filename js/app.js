@@ -4,7 +4,7 @@ import * as D from "./data.js";
 import * as V from "./views.js";
 import { openReport } from "./report.js";
 
-const VERSION = "6.0 (test 3)";
+const VERSION = "6.0 (test 4)";
 const $ = id => document.getElementById(id);
 const S = {
   db: null, saved: "", meta: {}, today: D.todayISO(), month: "",
@@ -83,14 +83,14 @@ function renderPanel() {
   if (html) { $("panel").innerHTML = html(); $("panel").scrollTop = top; }
 }
 
-function currentBanner() {
+function currentBanner(month = S.month) {
   const hasData = S.db.entries.length > 0;
   if (!hasData && !S.meta.startDismissed && D.readRaw(D.MAIN_KEY)) return { kind: "start" };
-  if (S.month !== D.ym(S.today) || !hasData) return null;
+  if (month !== D.ym(S.today) || !hasData) return null;
   const done = S.meta.reportDone || {};
-  const cur = D.monthCompletion(S.db, S.month, S.today);
-  if (cur.state === "complete" && !done[S.month]) return { kind: "complete", month: S.month };
-  const prev = D.addMonthsYM(S.month, -1);
+  const cur = D.monthCompletion(S.db, month, S.today);
+  if (cur.state === "complete" && !done[month]) return { kind: "complete", month };
+  const prev = D.addMonthsYM(month, -1);
   if (+S.today.slice(8) <= 20 && !done[prev] && S.db.entries.some(d => D.ym(d.date) === prev)) {
     const p = D.monthCompletion(S.db, prev, S.today);
     if (p.state === "complete") return { kind: "complete", month: prev };
@@ -117,29 +117,60 @@ function setMonth(month, scroll = "top") {
   render();
   if (scroll === "today") scrollToDate(S.today, false); else window.scrollTo({ top: 0 });
 }
-// Płynna zmiana miesiąca: obecny odjeżdża w bok, nowy wjeżdża z drugiej strony.
-// from = aktualne przesunięcie (gdy palec już przeciągnął listę).
+// Karuzela miesięcy: sąsiedni miesiąc leży tuż obok ekranu (podgląd) i wjeżdża razem z palcem.
 const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 let sliding = false;
-function slideMonth(dir, month = D.addMonthsYM(S.month, dir), scroll = "top") {
-  const pager = $("pager");
-  if (reduceMotion()) { pager.style.transform = pager.style.opacity = ""; setMonth(month, scroll); return; }
-  if (sliding) return;
+const peeks = {};
+const pageHTML = month => V.summaryHTML(S.db, month, S.today) + V.bannerHTML(currentBanner(month)) + V.listHTML(S.db, month, { today: S.today, open: null });
+function makePeeks(months) {
+  removePeeks();
+  const top = $("top").getBoundingClientRect().bottom, W = window.innerWidth;
+  for (const [dir, month] of Object.entries(months)) {
+    const el = document.createElement("div");
+    el.className = "peek";
+    el.style.top = `${top}px`;
+    el.style.transform = `translateX(${dir * W}px)`;
+    el.innerHTML = `<div class="peekInner">${pageHTML(month)}</div>`;
+    el.dataset.month = month;
+    document.body.appendChild(el);
+    peeks[dir] = el;
+  }
+}
+function removePeeks() { for (const k of Object.keys(peeks)) { peeks[k].remove(); delete peeks[k]; } }
+function dragTo(dx) {
+  const W = window.innerWidth;
+  $("pager").style.transform = `translateX(${dx}px)`;
+  for (const [dir, el] of Object.entries(peeks)) el.style.transform = `translateX(${dx + dir * W}px)`;
+}
+// Dokończenie przejścia: bieżący miesiąc wyjeżdża, podgląd wjeżdża na jego miejsce.
+function finishSlide(dir, scroll = "top") {
+  const pager = $("pager"), peek = peeks[dir], W = window.innerWidth;
+  if (!peek) return;
   sliding = true;
-  const w = pager.offsetWidth;
-  pager.classList.add("anim");
-  pager.style.transform = `translateX(${-dir * w * 0.4}px)`;
-  pager.style.opacity = "0";
+  pager.classList.add("anim"); peek.classList.add("anim");
+  pager.style.transform = `translateX(${-dir * W}px)`;
+  peek.style.transform = "translateX(0)";
   setTimeout(() => {
     pager.classList.remove("anim");
-    setMonth(month, scroll);
-    pager.style.transform = `translateX(${dir * w * 0.4}px)`;
-    void pager.offsetWidth;
-    pager.classList.add("anim");
     pager.style.transform = "";
-    pager.style.opacity = "";
-    setTimeout(() => { pager.classList.remove("anim"); sliding = false; }, 220);
-  }, 170);
+    setMonth(peek.dataset.month, scroll);
+    removePeeks();
+    sliding = false;
+  }, 250);
+}
+function cancelSlide() {
+  const pager = $("pager"), W = window.innerWidth;
+  pager.classList.add("anim");
+  pager.style.transform = "";
+  for (const [dir, el] of Object.entries(peeks)) { el.classList.add("anim"); el.style.transform = `translateX(${dir * W}px)`; }
+  setTimeout(() => { pager.classList.remove("anim"); removePeeks(); }, 250);
+}
+function slideMonth(dir, month = D.addMonthsYM(S.month, dir), scroll = "top") {
+  if (sliding) return;
+  if (reduceMotion()) { setMonth(month, scroll); return; }
+  makePeeks({ [dir]: month });
+  void peeks[dir].offsetWidth;
+  finishSlide(dir, scroll);
 }
 
 // ---------- Okna (arkusz, panel, pytanie) + gest „wstecz” ----------
@@ -530,8 +561,7 @@ function bindEvents() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && D.todayISO() !== S.today) { S.today = D.todayISO(); render(); }
   });
-  // Przeciągnięcie w bok: lista jedzie za palcem, po puszczeniu wjeżdża sąsiedni miesiąc.
-  const pager = $("pager");
+  // Przeciągnięcie w bok: lista jedzie za palcem, a obok od razu widać sąsiedni miesiąc.
   let sx = 0, sy = 0, st = 0, mode = "", dx = 0;
   $("main").addEventListener("touchstart", e => {
     mode = "";
@@ -545,20 +575,17 @@ function bindEvents() {
       if (Math.abs(x) < 10 && Math.abs(y) < 10) return;
       mode = Math.abs(x) > Math.abs(y) * 1.2 ? "h" : "v";
       if (mode === "v") return;
+      makePeeks({ "-1": D.addMonthsYM(S.month, -1), "1": D.addMonthsYM(S.month, 1) });
     }
     dx = x;
-    const w = pager.offsetWidth;
-    pager.style.transform = `translateX(${dx}px)`;
-    pager.style.opacity = String(1 - Math.min(0.6, Math.abs(dx) / w * 0.8));
+    dragTo(dx);
   }, { passive: true });
   const endDrag = e => {
     if (mode !== "h") { mode = ""; return; }
     mode = "";
-    const w = pager.offsetWidth, v = Math.abs(dx) / Math.max(1, e.timeStamp - st);
-    if (Math.abs(dx) > w * 0.22 || (Math.abs(dx) > 40 && v > 0.45)) { slideMonth(dx < 0 ? 1 : -1); return; }
-    pager.classList.add("anim");
-    pager.style.transform = ""; pager.style.opacity = "";
-    setTimeout(() => pager.classList.remove("anim"), 220);
+    const W = window.innerWidth, v = Math.abs(dx) / Math.max(1, e.timeStamp - st);
+    if (Math.abs(dx) > W * 0.25 || (Math.abs(dx) > 40 && v > 0.45)) finishSlide(dx < 0 ? 1 : -1);
+    else cancelSlide();
   };
   $("main").addEventListener("touchend", endDrag, { passive: true });
   $("main").addEventListener("touchcancel", endDrag, { passive: true });
