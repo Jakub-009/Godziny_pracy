@@ -41,7 +41,7 @@ export function summaryHTML(db, month, today) {
     t.missing && `<button class="chip miss" data-a="fill-month" type="button">brakuje ${t.missing} ${pluralPL(t.missing, "dnia", "dni", "dni")}</button>`
   ].filter(Boolean).join("");
   return `<section class="sum" aria-label="Podsumowanie miesiąca">
-    <div class="sumHead"><span class="sumLabel">${monthName(month)}</span>
+    <div class="sumHead"><span class="sumLabel">${monthName(month)}<span class="testBadge" title="Wersja testowa">TEST</span></span>
       <button class="iconBtn printBtn" data-a="print" type="button" aria-label="Drukuj raport za ${monthTitle(month)}">${icon("print")}</button></div>
     <span class="sumHours">${fmtHM(t.min)}<small>godz.</small></span>
     <span class="sumMoney">${pln(t.money)}</span>
@@ -316,7 +316,7 @@ export function calendarHTML(db, month, state) {
   for (const iso of days) {
     const day = getDay(db, iso), status = dayStatus(day), wd = weekdayIndex(iso), hol = holidayName(iso);
     const isToday = iso === state.today, missing = iso < state.today && isWorkday(iso, db.settings) && !isFilled(day);
-    const cls = ["cday", isToday && "today", state.sel === iso && !isToday && "sel", (wd === 6 || hol) && "red", wd === 5 && "sat", iso > state.today && "fut"];
+    const cls = ["cday", isToday && "today", state.sel === iso && "sel", (wd === 6 || hol) && "red", wd === 5 && "sat", iso > state.today && "fut"];
     let marks = "";
     if (status) marks += `<i class="cm ${status}"></i>`;
     for (const _ of (day?.shifts || []).slice(0, 3)) marks += `<i class="cm work"></i>`;

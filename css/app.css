@@ -90,11 +90,16 @@ svg { display: block; }
 .iconBtn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); flex: 0 0 auto; }
 .iconBtn:active { background: var(--fill-press); }
 .iconBtn svg { width: 24px; height: 24px; fill: currentColor; }
-.monthTitle { font-size: 20px; font-weight: 700; letter-spacing: -.02em; padding: 6px 6px; border-radius: 12px; white-space: nowrap; }
+.monthTitle { font-size: 20px; font-weight: 700; letter-spacing: -.02em; padding: 6px 4px; border-radius: 12px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.monthTitle span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.monthTitle.stacked { display: flex; flex-direction: column; align-items: flex-start; padding: 2px 4px; line-height: 1.1; }
+.monthTitle.stacked span { font-size: 18px; }
+.monthTitle.stacked small { font-size: 12.5px; font-weight: 650; color: var(--ink-3); letter-spacing: 0; }
+.top .navBtn { width: 40px; }
 .monthTitle:active { background: var(--fill-press); }
 .spacer { flex: 1; }
-.testBadge { font-size: 11px; font-weight: 700; color: var(--miss); background: var(--miss-soft); border-radius: 99px; padding: 4px 9px; margin-right: 2px; }
-.todayBtn { height: 34px; padding: 0 14px; border-radius: 99px; font-size: 13.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); margin-right: 4px; }
+.testBadge { font-size: 11px; font-weight: 700; color: var(--miss); background: var(--miss-soft); border-radius: 99px; padding: 3px 8px; margin-left: 8px; vertical-align: 2px; }
+.todayBtn { flex: 0 0 auto; height: 34px; padding: 0 13px; border-radius: 99px; font-size: 13.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); margin-right: 4px; }
 
 main { padding: 0 14px calc(48px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; touch-action: pan-y; }
 #pager { will-change: transform; }
@@ -228,7 +233,7 @@ dialog::backdrop { background: rgba(21, 32, 27, .34); }
 @keyframes up { from { transform: translateY(48px); opacity: .5; } to { transform: none; opacity: 1; } }
 .grabZone { margin: -8px -18px 6px; padding: 12px 0 14px; touch-action: none; cursor: grab; }
 .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--grab); margin: 0 auto; }
-.sheet.dragging { animation: none; }
+.sheet.settled { animation: none; }
 .sheet.snap { transition: transform .22s var(--ease); }
 .sheetHead { display: flex; align-items: baseline; gap: 12px; padding: 0 4px; }
 .sheetHead h2 { flex: 1; margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -.02em; line-height: 1.2; }
@@ -350,8 +355,9 @@ button.row:active { background: var(--row-press); }
 .cday.red b { color: var(--sun); }
 .cday.fut b { color: var(--ink-3); }
 .cday.sel { background: var(--accent-soft); }
-.cday.today { background: var(--accent); }
-.cday.today b { color: var(--on-accent); }
+.cday.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.cday.today b { color: var(--accent); }
+.cday.today.sel { background: var(--accent-soft); }
 .cmarks { display: flex; gap: 3px; height: 5px; }
 .cm { display: block; width: 16px; height: 5px; border-radius: 3px; }
 .cm.work { background: var(--accent); }
@@ -360,7 +366,6 @@ button.row:active { background: var(--row-press); }
 .cm.sick { background: var(--sick); }
 .cm.off { background: #b9c3be; }
 .cm.miss { background: #e9a94a; }
-.cday.today .cm { background: rgba(255, 255, 255, .9); }
 .cnote { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: #e2b23b; }
 .calLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 8px 0; font-size: 12px; font-weight: 650; color: var(--ink-3); }
 .calLegend span { display: flex; align-items: center; gap: 6px; }

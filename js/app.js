@@ -4,7 +4,7 @@ import * as D from "./data.js";
 import * as V from "./views.js";
 import { openReport } from "./report.js";
 
-const VERSION = "6.0 (test 5)";
+const VERSION = "6.0 (test 6)";
 const $ = id => document.getElementById(id);
 const S = {
   db: null, saved: "", meta: {}, today: D.todayISO(), month: "",
@@ -62,7 +62,11 @@ const saveMeta = () => D.saveMeta(S.meta);
 
 // ---------- Renderowanie ----------
 function render(opts = {}) {
-  $("monthTitle").textContent = D.monthTitle(S.month);
+  // Rok tylko gdy inny niż bieżący – krótszy nagłówek, mieści się z „Dziś”, przełącznikiem i menu.
+  const otherYear = S.month.slice(0, 4) !== S.today.slice(0, 4);
+  $("monthTitle").innerHTML = `<span>${D.monthName(S.month)}</span>${otherYear ? `<small>${S.month.slice(0, 4)}</small>` : ""}`;
+  $("monthTitle").classList.toggle("stacked", otherYear);
+  $("monthTitle").setAttribute("aria-label", `${D.monthTitle(S.month)} – wybierz miesiąc`);
   $("todayBtn").hidden = S.month === D.ym(S.today);
   $("summary").innerHTML = V.summaryHTML(S.db, S.month, S.today);
   $("banner").innerHTML = V.bannerHTML(currentBanner());
@@ -640,10 +644,14 @@ function applyTheme() {
 function bindSheetDrag() {
   const sheet = $("sheet");
   let y0 = 0, t0 = 0, dy = 0, active = false;
+  // Animacja wysunięcia ma się odegrać tylko przy otwarciu; potem jest wyłączana,
+  // inaczej przy zsuwaniu przeglądarka odpala ją ponownie i panel na chwilę „wskakuje”.
+  sheet.addEventListener("animationend", () => sheet.classList.add("settled"));
+  sheet.addEventListener("close", () => sheet.classList.remove("settled"));
   sheet.addEventListener("pointerdown", e => {
     if (!e.target.closest(".grabZone")) return;
     active = true; y0 = e.clientY; t0 = e.timeStamp; dy = 0;
-    sheet.classList.add("dragging"); sheet.classList.remove("snap");
+    sheet.classList.remove("snap");
     sheet.setPointerCapture(e.pointerId);
   });
   sheet.addEventListener("pointermove", e => {
@@ -654,12 +662,11 @@ function bindSheetDrag() {
   const end = e => {
     if (!active) return;
     active = false;
-    sheet.classList.remove("dragging");
     const v = dy / Math.max(1, e.timeStamp - t0);
     sheet.classList.add("snap");
     if (dy > Math.min(140, sheet.offsetHeight * 0.25) || (dy > 30 && v > 0.5)) {
       sheet.style.transform = "translateY(100%)";
-      setTimeout(() => { closeOverlay(sheet); sheet.classList.remove("snap"); sheet.style.transform = ""; }, 200);
+      setTimeout(() => { closeOverlay(sheet); sheet.classList.remove("snap"); sheet.style.transform = ""; }, 230);
     } else {
       sheet.style.transform = "";
       setTimeout(() => sheet.classList.remove("snap"), 220);
