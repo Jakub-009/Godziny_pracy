@@ -2,7 +2,7 @@
 // Strategia: od razu z pamięci (szybki start także przy słabym zasięgu), w tle pobranie nowszej wersji.
 // UWAGA: wszystkie apki na jakub-009.github.io dzielą jedną pamięć podręczną – kasujemy WYŁĄCZNIE własne wpisy.
 const PREFIX = "czas-pracy-test-";
-const CACHE = PREFIX + "6.0-test-4";
+const CACHE = PREFIX + "6.0-test-5";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./css/app.css", "./js/app.js", "./js/data.js", "./js/views.js", "./js/report.js",

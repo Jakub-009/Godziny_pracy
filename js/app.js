@@ -4,11 +4,12 @@ import * as D from "./data.js";
 import * as V from "./views.js";
 import { openReport } from "./report.js";
 
-const VERSION = "6.0 (test 4)";
+const VERSION = "6.0 (test 5)";
 const $ = id => document.getElementById(id);
 const S = {
   db: null, saved: "", meta: {}, today: D.todayISO(), month: "",
-  open: null,          // data rozwiniętego wiersza (szybkie szablony)
+  open: null,          // data rozwiniętego wiersza (szybkie szablony) – widok listy
+  sel: null,           // wybrany dzień – widok kalendarza
   fill: null,          // {from,to} – tryb „uzupełnij po kolei”
   sheet: null,         // {type:"day", date} | {type:"menu"}
   edit: { index: -1, start: "", end: "", error: "" },
@@ -21,14 +22,19 @@ function init() {
   S.db = db || D.createEmptyDB();
   S.saved = JSON.stringify(S.db);
   S.meta = D.loadMeta();
-  if (!S.meta.firstUse) { S.meta.firstUse = S.today; saveMeta(); }
+  // Widok: kto już używał wersji testowej, zostaje przy liście; nowi zaczynają od kalendarza.
+  if (!S.meta.view) S.meta.view = S.meta.firstUse ? "list" : "calendar";
+  if (!S.meta.firstUse) S.meta.firstUse = S.today;
+  saveMeta();
   S.month = D.ym(S.today);
+  S.sel = S.today;
   applyTheme();
   bindEvents();
   bindSheetDrag();
   render();
   requestAnimationFrame(() => scrollToDate(S.today, false));
   if (error) toast(error);
+  if (!S.meta.introSeen) setTimeout(() => openSheet("intro", () => { S.meta.introSeen = true; saveMeta(); }), 400);
   try { navigator.storage?.persist?.().catch(() => {}); } catch {}
   registerSW();
 }
@@ -60,7 +66,10 @@ function render(opts = {}) {
   $("todayBtn").hidden = S.month === D.ym(S.today);
   $("summary").innerHTML = V.summaryHTML(S.db, S.month, S.today);
   $("banner").innerHTML = V.bannerHTML(currentBanner());
-  $("list").innerHTML = V.listHTML(S.db, S.month, S);
+  const cal = S.meta.view === "calendar";
+  $("list").innerHTML = cal ? V.calendarHTML(S.db, S.month, S) : V.listHTML(S.db, S.month, S);
+  $("viewBtn").innerHTML = V.icon(cal ? "list" : "calendar");
+  $("viewBtn").setAttribute("aria-label", cal ? "Pokaż jako listę" : "Pokaż jako kalendarz");
   if (S.sheet && opts.sheet !== false) renderSheet();
   if (S.panel && opts.panel !== false) renderPanel();
 }
@@ -70,6 +79,7 @@ function renderSheet() {
   else if (S.sheet?.type === "menu") sheet.innerHTML = V.menuHTML();
   else if (S.sheet?.type === "rate") sheet.innerHTML = V.rateSheetHTML(S.db);
   else if (S.sheet?.type === "tpl") sheet.innerHTML = V.tplSheetHTML();
+  else if (S.sheet?.type === "intro") sheet.innerHTML = V.introHTML();
 }
 function renderPanel() {
   const top = $("panel").scrollTop;
@@ -107,6 +117,11 @@ function currentBanner(month = S.month) {
 }
 
 function scrollToDate(iso, smooth = true) {
+  if (S.meta.view === "calendar") {  // w kalendarzu pokazujemy kartę wybranego dnia
+    const card = document.querySelector(".selCard");
+    if (card && smooth) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return;
+  }
   const el = document.querySelector(`.day[data-date="${iso}"]`);
   if (!el) return;
   const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.3;
@@ -114,6 +129,7 @@ function scrollToDate(iso, smooth = true) {
 }
 function setMonth(month, scroll = "top") {
   S.month = month; S.open = null; S.fill = null;
+  S.sel = month === D.ym(S.today) ? S.today : null;
   render();
   if (scroll === "today") scrollToDate(S.today, false); else window.scrollTo({ top: 0 });
 }
@@ -121,7 +137,11 @@ function setMonth(month, scroll = "top") {
 const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 let sliding = false;
 const peeks = {};
-const pageHTML = month => V.summaryHTML(S.db, month, S.today) + V.bannerHTML(currentBanner(month)) + V.listHTML(S.db, month, { today: S.today, open: null });
+const pageHTML = month => {
+  const st = { today: S.today, open: null, sel: month === D.ym(S.today) ? S.today : null };
+  return V.summaryHTML(S.db, month, S.today) + V.bannerHTML(currentBanner(month))
+    + (S.meta.view === "calendar" ? V.calendarHTML(S.db, month, st) : V.listHTML(S.db, month, st));
+};
 function makePeeks(months) {
   removePeeks();
   const top = $("top").getBoundingClientRect().bottom, W = window.innerWidth;
@@ -275,7 +295,7 @@ function quick(date, fn, message) {
   if (!r.ok) { toast(r.message || "Nie udało się zapisać."); return; }
   let next = null;
   if (S.fill) next = V.missingIn(S.db, D.monthDays(S.month).filter(d => d >= S.fill.from && d <= S.fill.to && d !== date), S.today)[0] || null;
-  S.open = next;
+  if (S.meta.view === "calendar") S.sel = next || date; else S.open = next;
   if (!next && S.fill) { S.fill = null; message += " Wszystko uzupełnione."; }
   commit(message, snap);
   if (next) scrollToDate(next);
@@ -284,7 +304,8 @@ function startFill(from, to) {
   const days = D.monthDays(S.month).filter(d => d >= from && d <= to);
   const first = V.missingIn(S.db, days, S.today)[0];
   if (!first) return;
-  S.fill = { from, to }; S.open = first;
+  S.fill = { from, to };
+  if (S.meta.view === "calendar") S.sel = first; else S.open = first;
   render();
   scrollToDate(first);
 }
@@ -433,6 +454,22 @@ const A = {
   "quick-tpl": el => { const t = S.db.settings.shiftTemplates[+el.dataset.i]; if (t) quick(el.dataset.date, () => D.addShift(S.db, el.dataset.date, t.start, t.end), `${D.fmtShortDate(el.dataset.date)}: ${t.start}–${t.end}.`); },
   "quick-off": el => quick(el.dataset.date, () => D.setStatus(S.db, el.dataset.date, "off"), `${D.fmtShortDate(el.dataset.date)}: dzień wolny.`),
   "quick-more": el => openDay(el.dataset.date),
+  "toggle-view": () => {
+    S.meta.view = S.meta.view === "calendar" ? "list" : "calendar"; saveMeta();
+    S.open = null; S.fill = null;
+    if (!S.sel && S.month === D.ym(S.today)) S.sel = S.today;
+    render();
+    if (S.meta.view === "list" && S.month === D.ym(S.today)) scrollToDate(S.today, false); else window.scrollTo({ top: 0 });
+  },
+  "cal-day": el => {
+    const date = el.dataset.date;
+    if (S.sel === date && D.isFilled(D.getDay(S.db, date))) return openDay(date); // drugie dotknięcie = edycja
+    S.sel = date; S.fill = null;
+    render();
+    scrollToDate(date);
+  },
+  "open-day": el => openDay(el.dataset.date),
+  "show-intro": () => { closeOverlay($("sheet")); setTimeout(() => openSheet("intro"), 250); },
   "fill-week": el => startFill(el.dataset.from, el.dataset.to),
   "fill-month": () => startFill(`${S.month}-01`, `${S.month}-31`),
   "show-missing": el => { S.month = el.dataset.month; window.scrollTo({ top: 0 }); startFill(`${S.month}-01`, `${S.month}-31`); },

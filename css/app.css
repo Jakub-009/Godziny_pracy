@@ -334,3 +334,52 @@ button.row:active { background: var(--row-press); }
 .themeBtn { background: var(--fill); border-radius: 18px; padding: 14px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
 .themeBtn i { width: 34px; height: 34px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }
 .themeBtn.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* ---------- Widok kalendarza ---------- */
+.viewBtn { color: var(--accent); background: var(--accent-soft); width: 40px; height: 40px; margin-right: 2px; }
+.viewBtn svg { width: 22px; height: 22px; }
+.calCard { background: var(--surface); border-radius: var(--r-card); padding: 12px 10px; margin-top: 10px; }
+.calHead { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; font-weight: 700; color: var(--ink-3); padding: 2px 0 6px; }
+.calHead .red { color: var(--sun); }
+.calGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 4px; }
+.cday { position: relative; height: 58px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; }
+.cday:active { background: var(--fill); }
+.cday.blank { pointer-events: none; }
+.cday b { font-size: 16px; font-weight: 750; letter-spacing: -.02em; line-height: 1; }
+.cday.sat b { color: var(--ink-2); }
+.cday.red b { color: var(--sun); }
+.cday.fut b { color: var(--ink-3); }
+.cday.sel { background: var(--accent-soft); }
+.cday.today { background: var(--accent); }
+.cday.today b { color: var(--on-accent); }
+.cmarks { display: flex; gap: 3px; height: 5px; }
+.cm { display: block; width: 16px; height: 5px; border-radius: 3px; }
+.cm.work { background: var(--accent); }
+.cm.paid { background: var(--paid); }
+.cm.unpaid { background: var(--unpaid); }
+.cm.sick { background: var(--sick); }
+.cm.off { background: #b9c3be; }
+.cm.miss { background: #e9a94a; }
+.cday.today .cm { background: rgba(255, 255, 255, .9); }
+.cnote { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: #e2b23b; }
+.calLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 8px 0; font-size: 12px; font-weight: 650; color: var(--ink-3); }
+.calLegend span { display: flex; align-items: center; gap: 6px; }
+.calLegend .cm { width: 12px; height: 4px; }
+.selCard { background: var(--surface); border-radius: var(--r-card); padding: 18px; margin-top: 12px; }
+.selHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.selHead h3 { margin: 0; font-size: 18px; font-weight: 750; letter-spacing: -.02em; }
+.selHead p { margin: 4px 0 0; }
+.selCard .quick { margin-top: 12px; }
+.selRow { display: flex; justify-content: space-between; background: var(--fill); border-radius: var(--r-item); padding: 14px 16px; font-size: 16px; font-weight: 700; }
+.selRow + .selRow { margin-top: 8px; }
+.selRow .m { color: var(--ink-3); font-weight: 650; }
+
+/* ---------- Co nowego ---------- */
+.introList { margin-top: 18px; }
+.introItem { display: flex; gap: 14px; align-items: flex-start; }
+.introItem + .introItem { margin-top: 18px; }
+.introIcon { width: 46px; height: 46px; border-radius: 16px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: 0 0 auto; }
+.introIcon svg { width: 24px; height: 24px; fill: currentColor; }
+.introItem strong { font-size: 16px; font-weight: 750; }
+.introItem p { margin: 4px 0 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.45; font-weight: 550; }
+.menuFoot { gap: 4px; }

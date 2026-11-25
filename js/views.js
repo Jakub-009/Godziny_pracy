@@ -19,7 +19,11 @@ export const ICON = {
   settings: "M19.43 12.98c.04-.32.07-.65.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.49.49 0 0 0 .12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z",
   backup: "M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z",
   info: "M11 17h2v-6h-2v6Zm1-14a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 16a7 7 0 1 1 0-14 7 7 0 0 1 0 14ZM11 9h2V7h-2v2Z",
-  chev: "M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
+  chev: "M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z",
+  list: "M3 13h2v-2H3v2Zm0 4h2v-2H3v2Zm0-8h2V7H3v2Zm4 4h14v-2H7v2Zm0 4h14v-2H7v2ZM7 7v2h14V7H7Z",
+  calendar: "M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 16H5V10h14v10ZM9 14H7v-2h2v2Zm4 0h-2v-2h2v2Zm4 0h-2v-2h2v2Zm-8 4H7v-2h2v2Zm4 0h-2v-2h2v2Zm4 0h-2v-2h2v2Z",
+  palette: "M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8Zm-5.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z",
+  bolt: "M11 21h-1l1-7H7.5c-.88 0-.33-.75-.31-.78C8.48 10.94 10.42 7.54 13.01 3h1l-1 7h3.51c.4 0 .62.19.4.66C12.97 17.55 11 21 11 21Z"
 };
 export const icon = (name, cls = "") => `<svg viewBox="0 0 24 24"${cls ? ` class="${cls}"` : ""} aria-hidden="true"><path d="${ICON[name]}"/></svg>`;
 const n = (v, one, few, many) => `${v} ${pluralPL(v, one, few, many)}`;
@@ -118,7 +122,7 @@ function dayHTML(db, iso, state) {
   return `<div class="${cls.filter(Boolean).join(" ")}" ${attrs}>${dn}<div class="dmain">${main}</div>${open ? "" : `<span class="plus">${icon("plus")}</span>`}</div>`;
 }
 
-function quickHTML(db, iso) {
+export function quickHTML(db, iso) {
   const tpl = db.settings.shiftTemplates.map((t, i) =>
     `<button class="qbtn" data-a="quick-tpl" data-date="${iso}" data-i="${i}" type="button">${t.start}–${t.end}</button>`).join("");
   return `<div class="quick">${tpl}
@@ -169,7 +173,7 @@ export function menuHTML() {
     ${tile("panel-settings", "settings", "Ustawienia", "Stawka, szablony, dni robocze")}
     ${tile("panel-backup", "backup", "Kopia zapasowa", "Zapisz lub wczytaj dane")}
   </div>
-  <div class="menuFoot"><button class="btn text" data-a="panel-info" type="button">O wersji testowej</button></div>`;
+  <div class="menuFoot"><button class="btn text" data-a="show-intro" type="button">Co nowego</button><button class="btn text" data-a="panel-info" type="button">O wersji testowej</button></div>`;
 }
 
 const panelTop = title => `<div class="panelBar"><button class="iconBtn" data-a="close-panel" type="button" aria-label="Wróć">${icon("back")}</button></div>
@@ -302,4 +306,57 @@ export function infoHTML(version) {
     <p class="hint" style="margin:10px 0 0">To wersja testowa nowego wyglądu. Zapisuje dane osobno, więc główna aplikacja Czas pracy nie jest przez nią zmieniana.</p>
     <p class="hint" style="margin:10px 0 0">Godziny wpisane tutaj przeniesiesz do głównej aplikacji tak: zrób tu kopię, a w głównej aplikacji wczytaj ją i wybierz „Scal”.</p>
   </div></div>`;
+}
+
+// ---------- Widok kalendarza (siatka z kreskami) ----------
+const CAL_HEAD = ["pn", "wt", "śr", "czw", "pt", "sb", "nd"];
+export function calendarHTML(db, month, state) {
+  const days = monthDays(month), lead = weekdayIndex(days[0]);
+  const cells = Array.from({ length: lead }, () => `<span class="cday blank"></span>`);
+  for (const iso of days) {
+    const day = getDay(db, iso), status = dayStatus(day), wd = weekdayIndex(iso), hol = holidayName(iso);
+    const isToday = iso === state.today, missing = iso < state.today && isWorkday(iso, db.settings) && !isFilled(day);
+    const cls = ["cday", isToday && "today", state.sel === iso && !isToday && "sel", (wd === 6 || hol) && "red", wd === 5 && "sat", iso > state.today && "fut"];
+    let marks = "";
+    if (status) marks += `<i class="cm ${status}"></i>`;
+    for (const _ of (day?.shifts || []).slice(0, 3)) marks += `<i class="cm work"></i>`;
+    if (missing) marks = `<i class="cm miss"></i>`;
+    const note = day?.note?.trim() ? `<i class="cnote"></i>` : "";
+    cells.push(`<button class="${cls.filter(Boolean).join(" ")}" data-a="cal-day" data-date="${iso}" type="button" aria-label="${escapeHtml(fmtLongDate(iso))}" aria-pressed="${state.sel === iso}">
+      <b>${+iso.slice(8)}</b><span class="cmarks">${marks}</span>${note}</button>`);
+  }
+  const head = CAL_HEAD.map((w, i) => `<span${i === 6 ? ' class="red"' : ""}>${w}</span>`).join("");
+  const legend = `<div class="calLegend"><span><i class="cm work"></i>praca</span><span><i class="cm paid"></i>urlop</span><span><i class="cm sick"></i>L4</span><span><i class="cm off"></i>wolne</span><span><i class="cm miss"></i>brak wpisu</span></div>`;
+  return `<section class="calCard"><div class="calHead">${head}</div><div class="calGrid">${cells.join("")}</div></section>${legend}${selCardHTML(db, state.sel, state)}`;
+}
+
+function selCardHTML(db, iso, state) {
+  if (!iso) return `<section class="selCard"><p class="muted" style="margin:0">Dotknij dnia, żeby zobaczyć szczegóły.</p></section>`;
+  const day = getDay(db, iso), status = dayStatus(day), min = dayMinutes(day), hol = holidayName(iso);
+  const sub = [iso === state.today && "Dzisiaj", hol].filter(Boolean).join(", ");
+  if (!isFilled(day)) {
+    const missing = iso < state.today && isWorkday(iso, db.settings);
+    return `<section class="selCard"><div class="selHead"><div><h3>${fmtLongDate(iso)}</h3>
+      <p class="${missing ? "missText" : "muted"}">${missing ? "Brak wpisu" : sub || "Brak wpisu"}</p></div></div>${quickHTML(db, iso)}</section>`;
+  }
+  const rows = day.shifts.map(s => `<div class="selRow"><span>${s.start} – ${s.end}</span><span class="m">${fmtHM(shiftMinutes(iso, s))}</span></div>`).join("");
+  return `<section class="selCard"><div class="selHead"><div><h3>${fmtLongDate(iso)}</h3>${sub ? `<p class="muted">${escapeHtml(sub)}</p>` : ""}</div>
+      ${min ? `<span class="sheetTotal">${fmtHM(min)}</span>` : ""}</div>
+    ${status ? `<span class="tag ${status}" style="display:inline-block;margin-top:12px">${STATUS_LABEL[status]}</span>` : ""}
+    ${rows ? `<div style="margin-top:12px">${rows}</div>` : ""}
+    ${day.note.trim() ? `<div class="note" style="margin-top:10px;display:inline-block">${escapeHtml(day.note.trim().split("\n")[0])}</div>` : ""}
+    <button class="btn tonal block" style="margin-top:14px" data-a="open-day" data-date="${iso}" type="button">Edytuj dzień</button></section>`;
+}
+
+// ---------- Co nowego ----------
+export function introHTML() {
+  const item = (ic, title, text) => `<div class="introItem"><span class="introIcon">${icon(ic)}</span><div><strong>${title}</strong><p>${text}</p></div></div>`;
+  return `<div class="grabZone" aria-hidden="true"><div class="grab"></div></div>
+    <div class="sheetHead"><h2>Co nowego</h2></div>
+    <div class="introList">
+      ${item("calendar", "Lista albo kalendarz", "Ikoną w prawym górnym rogu przełączasz widok miesiąca. Twój wybór zostaje zapamiętany.")}
+      ${item("palette", "Kolory", "W Ustawieniach, w sekcji Wygląd, wybierzesz zieleń, granat albo grafit.")}
+      ${item("bolt", "Szybsze wpisywanie", "Dotknij pustego dnia i wybierz godziny z szablonu – zapisują się od razu. Każdą zmianę możesz cofnąć.")}
+    </div>
+    <div class="sheetFoot"><button class="btn block" data-a="close-sheet" type="button">Zaczynamy</button></div>`;
 }
