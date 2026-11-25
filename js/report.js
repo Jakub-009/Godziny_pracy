@@ -6,7 +6,7 @@ import {
 
 const days = (n, one, few, many) => `${n} ${pluralPL(n, one, few, many)}`;
 
-export function buildReportHTML(db, month) {
+export function buildReportHTML(db, month, color = { accent: "${color.accent}", soft: "#e2efe8" }) {
   const t = monthTotals(db, month);
   const rows = [];
   for (const iso of monthDays(month)) {
@@ -45,8 +45,8 @@ export function buildReportHTML(db, month) {
   body { margin: 0; font-family: system-ui, Roboto, "Segoe UI", Arial, sans-serif; color: #18211e; background: #fff; font-size: 12px;
          -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .doc { max-width: 190mm; margin: 0 auto; padding: 16px; }
-  header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1f5745; padding-bottom: 10px; }
-  .eyebrow { color: #1f5745; font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid ${color.accent}; padding-bottom: 10px; }
+  .eyebrow { color: ${color.accent}; font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
   h1 { margin: 2px 0 0; font-size: 22px; font-weight: 650; }
   .meta { text-align: right; color: #5b6762; font-size: 11px; line-height: 1.5; }
   .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 10px; }
@@ -65,11 +65,11 @@ export function buildReportHTML(db, month) {
   .c-sum { width: 52px; text-align: right; font-weight: 600; } th.c-sum { text-align: right; }
   .c-note { color: #46524d; width: 34%; }
   tr.st-paid td { background: #f8fafd; } tr.st-sick td { background: #fdf8f8; } tr.st-unpaid td { background: #fafbf6; }
-  tfoot td { border-top: 2px solid #1f5745; border-bottom: 0; font-weight: 650; padding-top: 8px; }
+  tfoot td { border-top: 2px solid ${color.accent}; border-bottom: 0; font-weight: 650; padding-top: 8px; }
   footer { margin-top: 14px; color: #87938e; font-size: 10px; display: flex; justify-content: space-between; }
   .noprint { margin: 0 auto 12px; max-width: 190mm; display: flex; gap: 8px; padding: 12px 16px 0; }
-  .noprint button { border: 0; border-radius: 99px; padding: 10px 18px; font: 600 14px system-ui; background: #1f5745; color: #fff; }
-  .noprint button.sec { background: #e5f0eb; color: #1f5745; }
+  .noprint button { border: 0; border-radius: 99px; padding: 10px 18px; font: 600 14px system-ui; background: ${color.accent}; color: #fff; }
+  .noprint button.sec { background: ${color.soft}; color: ${color.accent}; }
   @media print { .noprint { display: none; } .doc { padding: 0; } }
 </style></head><body>
 <div class="noprint"><button onclick="window.print()">Drukuj / zapisz PDF</button><button class="sec" onclick="window.close()">Zamknij</button></div>
@@ -96,8 +96,8 @@ export function buildReportHTML(db, month) {
 }
 
 // Otwiera raport w nowej karcie; gdy przeglądarka zablokuje okno – pobiera plik HTML.
-export function openReport(db, month) {
-  const html = buildReportHTML(db, month);
+export function openReport(db, month, color) {
+  const html = buildReportHTML(db, month, color);
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank");

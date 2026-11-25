@@ -118,10 +118,9 @@ function dayHTML(db, iso, state) {
   return `<div class="${cls.filter(Boolean).join(" ")}" ${attrs}>${dn}<div class="dmain">${main}</div>${open ? "" : `<span class="plus">${icon("plus")}</span>`}</div>`;
 }
 
-const short = t => t.endsWith(":00") ? t.slice(0, 2) : t; // 06:00 → 06; 06:30 zostaje
 function quickHTML(db, iso) {
   const tpl = db.settings.shiftTemplates.map((t, i) =>
-    `<button class="qbtn" data-a="quick-tpl" data-date="${iso}" data-i="${i}" type="button">${short(t.start)}–${short(t.end)}</button>`).join("");
+    `<button class="qbtn" data-a="quick-tpl" data-date="${iso}" data-i="${i}" type="button">${t.start}–${t.end}</button>`).join("");
   return `<div class="quick">${tpl}
     <button class="qbtn sec" data-a="quick-off" data-date="${iso}" type="button">Dzień wolny</button>
     <button class="qbtn sec" data-a="quick-more" data-date="${iso}" type="button">Więcej…</button></div>`;
@@ -141,7 +140,7 @@ export function daySheetHTML(db, iso, edit) {
     `<button class="qbtn" data-a="sheet-tpl" data-i="${i}" type="button">${t.start}–${t.end}</button>`).join("")}</div>` : "";
   const st = ["", "paid", "unpaid", "sick", "off"].map(v =>
     `<button type="button" data-a="set-status" data-v="${v}" class="${status === v ? "on" : ""}" aria-pressed="${status === v}">${v ? STATUS_LABEL[v] : "Brak"}</button>`).join("");
-  return `<div class="grab"></div>
+  return `<div class="grabZone" aria-hidden="true"><div class="grab"></div></div>
     <div class="sheetHead"><div style="flex:1"><h2>${fmtLongDate(iso)}</h2>${hol ? `<p>${escapeHtml(hol)}</p>` : ""}</div>
       ${min ? `<span class="sheetTotal">${fmtHM(min)}</span>` : ""}</div>
     ${shifts ? `<div style="margin-top:18px">${shifts}</div>` : ""}
@@ -164,7 +163,7 @@ export function daySheetHTML(db, iso, edit) {
 // ---------- Menu ----------
 export function menuHTML() {
   const tile = (a, ic, title, sub) => `<button class="tile" data-a="${a}" type="button">${icon(ic)}<div><strong>${title}</strong><span>${sub}</span></div></button>`;
-  return `<div class="grab"></div><div class="tiles">
+  return `<div class="grabZone" aria-hidden="true"><div class="grab"></div></div><div class="tiles">
     ${tile("panel-range", "range", "Zakres dni", "Urlop, L4 albo godziny dla wielu dni")}
     ${tile("panel-year", "stats", "Statystyki", "Godziny, wypłata i urlop w roku")}
     ${tile("panel-settings", "settings", "Ustawienia", "Stawka, szablony, dni robocze")}
@@ -203,14 +202,14 @@ export function rangeHTML(db, r, count) {
 }
 
 // ---------- Statystyki roczne ----------
-const MONTH_LETTERS = ["S", "L", "M", "K", "M", "C", "L", "S", "W", "P", "L", "G"];
+const MONTH_SHORT = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
 export function yearHTML(db, year) {
   const t = yearTotals(db, year);
   const quota = Number(db.settings.leaveQuota) || 0, left = Math.max(0, quota - t.paid);
   const months = Array.from({ length: 12 }, (_, i) => monthTotals(db, `${year}-${pad2(i + 1)}`).min);
   const max = Math.max(...months, 1), cur = ym(todayISO());
   const bars = months.map((m, i) => `<div class="bar${`${year}-${pad2(i + 1)}` === cur ? " cur" : ""}" title="${fmtHM(m)}">
-    <i style="height:${Math.round(m / max * 84)}px"></i><span>${MONTH_LETTERS[i]}</span></div>`).join("");
+    <i style="height:${Math.round(m / max * 84)}px"></i><span>${MONTH_SHORT[i]}</span></div>`).join("");
   const row = (k, v) => `<div class="row"><span>${k}</span><span class="val">${v}</span></div>`;
   return `${panelTop("Statystyki")}<div class="panelBody">
     <div class="card">
@@ -230,7 +229,8 @@ export function yearHTML(db, year) {
 }
 
 // ---------- Ustawienia ----------
-export function settingsHTML(db) {
+export const THEMES = [["green", "Zieleń", "#1f5745"], ["navy", "Granat", "#24406b"], ["graphite", "Grafit", "#2b2b30"]];
+export function settingsHTML(db, theme = "green") {
   const s = db.settings;
   const tpls = s.shiftTemplates.map((t, i) => `<span class="tplChip">${t.start}–${t.end}<button data-a="del-tpl" data-i="${i}" type="button" aria-label="Usuń szablon ${t.start}–${t.end}">${icon("close")}</button></span>`).join("");
   const sw = (key, label, on) => `<label class="row"><span>${label}</span><input class="switch" type="checkbox" data-setting="${key}" ${on ? "checked" : ""}></label>`;
@@ -238,7 +238,10 @@ export function settingsHTML(db) {
     <div class="stepper"><button type="button" data-a="step" data-key="${key}" data-d="-1" aria-label="Mniej">−</button><output>${val}</output>
     <button type="button" data-a="step" data-key="${key}" data-d="1" aria-label="Więcej">+</button></div></div>`;
   const rate = s.rateHistory[s.rateHistory.length - 1];
+  const themes = THEMES.map(([v, l, c]) => `<button class="themeBtn${theme === v ? " on" : ""}" data-a="theme" data-v="${v}" type="button" aria-pressed="${theme === v}"><i style="background:${c}"></i>${l}</button>`).join("");
   return `${panelTop("Ustawienia")}<div class="panelBody">
+    <div class="label">Wygląd (do porównania w wersji testowej)</div>
+    <div class="themes">${themes}</div>
     <div class="label">Rozliczenie</div>
     <div class="rows">
       <button class="row" data-a="sheet-rate" type="button"><span>Stawka godzinowa${s.rateHistory.length > 1 ? `<small>${s.rateHistory.length} zmiany w historii</small>` : ""}</span><span class="val">${pln(rate.rate)}</span>${icon("chev", "chev")}</button>
@@ -258,7 +261,7 @@ export function rateSheetHTML(db) {
   const h = db.settings.rateHistory;
   const list = [...h].map((r, i) => ({ r, i })).reverse().map(({ r, i }) => `<div><span><strong>${pln(r.rate)}</strong><small>${r.from <= RATE_START ? "od początku" : "od " + fmtFullDate(r.from)}</small></span>
     ${h.length > 1 ? `<button class="iconBtn" data-a="del-rate" data-i="${i}" type="button" aria-label="Usuń stawkę">${icon("trash")}</button>` : ""}</div>`).join("");
-  return `<div class="grab"></div><div class="sheetHead"><h2>Stawka godzinowa</h2></div>
+  return `<div class="grabZone" aria-hidden="true"><div class="grab"></div></div><div class="sheetHead"><h2>Stawka godzinowa</h2></div>
     <p class="hint" style="margin:8px 4px 0">Każda stawka obowiązuje od wskazanego dnia. Wcześniejsze dni liczą się starą stawką.</p>
     <div class="rateList" style="margin-top:16px">${list}</div>
     <div class="secTitle">Nowa stawka</div>
@@ -268,7 +271,7 @@ export function rateSheetHTML(db) {
     <div class="sheetFoot"><button class="btn block" data-a="add-rate" type="button">Zapisz nową stawkę</button></div>`;
 }
 export function tplSheetHTML() {
-  return `<div class="grab"></div><div class="sheetHead"><h2>Nowy szablon godzin</h2></div>
+  return `<div class="grabZone" aria-hidden="true"><div class="grab"></div></div><div class="sheetHead"><h2>Nowy szablon godzin</h2></div>
     <div class="grid2" style="margin-top:18px">
       <div class="field"><label for="tplStart">Wejście</label><input id="tplStart" type="time"></div>
       <div class="field"><label for="tplEnd">Wyjście</label><input id="tplEnd" type="time"></div></div>

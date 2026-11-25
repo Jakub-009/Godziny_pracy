@@ -4,7 +4,7 @@ import * as D from "./data.js";
 import * as V from "./views.js";
 import { openReport } from "./report.js";
 
-const VERSION = "6.0 (test 2)";
+const VERSION = "6.0 (test 3)";
 const $ = id => document.getElementById(id);
 const S = {
   db: null, saved: "", meta: {}, today: D.todayISO(), month: "",
@@ -23,7 +23,9 @@ function init() {
   S.meta = D.loadMeta();
   if (!S.meta.firstUse) { S.meta.firstUse = S.today; saveMeta(); }
   S.month = D.ym(S.today);
+  applyTheme();
   bindEvents();
+  bindSheetDrag();
   render();
   requestAnimationFrame(() => scrollToDate(S.today, false));
   if (error) toast(error);
@@ -74,7 +76,7 @@ function renderPanel() {
   const html = {
     range: () => V.rangeHTML(S.db, S.range, D.countRangeDays(S.range)),
     year: () => V.yearHTML(S.db, S.year),
-    settings: () => V.settingsHTML(S.db),
+    settings: () => V.settingsHTML(S.db, S.meta.theme || "green"),
     backup: () => V.backupHTML(S.meta, !!shareFile(), !!D.readRaw(D.MAIN_KEY)),
     info: () => V.infoHTML(VERSION)
   }[S.panel];
@@ -264,7 +266,8 @@ async function printMonth(month) {
       buttons: [{ label: "Anuluj", value: false }, { label: "Drukuj", value: true, kind: "primary" }] });
     if (!go) return;
   }
-  const how = openReport(S.db, month);
+  const css = getComputedStyle(document.documentElement);
+  const how = openReport(S.db, month, { accent: css.getPropertyValue("--accent").trim(), soft: css.getPropertyValue("--accent-soft").trim() });
   S.meta.reportDone = { ...(S.meta.reportDone || {}), [month]: "printed" };
   saveMeta();
   render({ sheet: false, panel: false });
@@ -474,6 +477,7 @@ const A = {
     const snap = S.saved; D.addRate(S.db, from, val); commit("Zapisano stawkę.", snap);
     if ($("rateVal")) $("rateVal").value = "";
   },
+  "theme": el => { S.meta.theme = el.dataset.v; saveMeta(); applyTheme(); renderPanel(); },
   "sheet-rate": () => openSheet("rate"),
   "sheet-tpl-add": () => openSheet("tpl"),
   "step": el => {
@@ -558,6 +562,47 @@ function bindEvents() {
   };
   $("main").addEventListener("touchend", endDrag, { passive: true });
   $("main").addEventListener("touchcancel", endDrag, { passive: true });
+}
+
+// Motyw (tylko wersja testowa): zapisany w META_KEY, nie w danych godzin.
+function applyTheme() {
+  const t = S.meta.theme || "green";
+  if (t === "green") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
+}
+
+// Zsuwanie arkusza palcem – tylko za uchwyt (szara „fasolka” u góry).
+function bindSheetDrag() {
+  const sheet = $("sheet");
+  let y0 = 0, t0 = 0, dy = 0, active = false;
+  sheet.addEventListener("pointerdown", e => {
+    if (!e.target.closest(".grabZone")) return;
+    active = true; y0 = e.clientY; t0 = e.timeStamp; dy = 0;
+    sheet.classList.add("dragging"); sheet.classList.remove("snap");
+    sheet.setPointerCapture(e.pointerId);
+  });
+  sheet.addEventListener("pointermove", e => {
+    if (!active) return;
+    dy = Math.max(0, e.clientY - y0);
+    sheet.style.transform = `translateY(${dy}px)`;
+  });
+  const end = e => {
+    if (!active) return;
+    active = false;
+    sheet.classList.remove("dragging");
+    const v = dy / Math.max(1, e.timeStamp - t0);
+    sheet.classList.add("snap");
+    if (dy > Math.min(140, sheet.offsetHeight * 0.25) || (dy > 30 && v > 0.5)) {
+      sheet.style.transform = "translateY(100%)";
+      setTimeout(() => { closeOverlay(sheet); sheet.classList.remove("snap"); sheet.style.transform = ""; }, 200);
+    } else {
+      sheet.style.transform = "";
+      setTimeout(() => sheet.classList.remove("snap"), 220);
+    }
+  };
+  sheet.addEventListener("pointerup", end);
+  sheet.addEventListener("pointercancel", end);
 }
 
 function registerSW() {
